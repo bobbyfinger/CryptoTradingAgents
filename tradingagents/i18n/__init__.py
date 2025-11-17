@@ -33,12 +33,24 @@ def get_lang(*keys, default="") -> str | dict:
 
 
 def get_prompts(*keys, default="") -> str:
+    """
+    Get prompts from the language module.
+    Handles tuple-formatted prompts by converting them to strings.
+    """
     lang_code = DEFAULT_CONFIG.get("language", "zh")
     try:
         lang_module = importlib.import_module(f"tradingagents.i18n.prompts.{lang_code}")
-        return get_value(lang_module.PROMPTS, *keys, default=default)
+        result = get_value(lang_module.PROMPTS, *keys, default=default)
+        # Convert tuple to string if needed (handles legacy tuple-formatted prompts)
+        if isinstance(result, tuple) and len(result) == 1:
+            return result[0]
+        return result
     except Exception:
         # fallback to zh
         from .prompts.zh import PROMPTS
 
-        return get_value(PROMPTS, *keys, default=default)
+        result = get_value(PROMPTS, *keys, default=default)
+        # Convert tuple to string if needed (handles legacy tuple-formatted prompts)
+        if isinstance(result, tuple) and len(result) == 1:
+            return result[0]
+        return result
