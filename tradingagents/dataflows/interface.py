@@ -25,7 +25,9 @@ from .finnhub_utils import get_data_in_range
 import yfinance as yf
 
 from tradingagents.i18n import get_prompts
+
 data_unavailable_prompt = get_prompts("data_unavailable")
+
 
 def get_blockbeats_news(count: Annotated[int, "news' count, no more than 30"] = 10):
     """
@@ -45,9 +47,12 @@ def get_blockbeats_news(count: Annotated[int, "news' count, no more than 30"] = 
 
     news_str = ""
     for entry in news:
-        news_str += f"### {entry['title']} ({entry['create_time']})\n\n{entry['content']}\n\n"
+        news_str += (
+            f"### {entry['title']} ({entry['create_time']})\n\n{entry['content']}\n\n"
+        )
 
     return f"## Blockbeats News:\n\n{news_str}"
+
 
 def get_coindesk_news(
     tickers: Annotated[list[str], "List of ticker symbols to fetch news for"] = [],
@@ -55,11 +60,11 @@ def get_coindesk_news(
 ) -> str:
     """
     Retrieve the latest top Coindesk news for given tickers.
-    
+
     Args:
         tickers (list): List of ticker symbols to fetch news for.
         count (int): Number of news articles to fetch, default is 10.
-        
+
     Returns:
         str: A formatted string containing the latest news articles and meta information.
     """
@@ -74,11 +79,13 @@ def get_coindesk_news(
 
     return f"## Coindesk News:\n\n{news_str}"
 
+
 def get_fear_and_greed_index() -> str:
     fng = fetch_fear_and_greed_from_alternativeme()
     if not fng or len(fng) == 0:
-        return "Fear and Greed Index: " + data_unavailable_prompt 
-    return f"""## Fear and Greed Index: {fng[0]}\n0 means \"Extreme Fear\", while 100 means \"Extreme Greed\"\nPrevious daily FnG: {','.join(fng[1:])}"""
+        return "Fear and Greed Index: " + data_unavailable_prompt
+    return f"""## Fear and Greed Index: {fng[0]}\n0 means \"Extreme Fear\", while 100 means \"Extreme Greed\"\nPrevious daily FnG: {",".join(fng[1:])}"""
+
 
 def get_coinstats_btc_dominance() -> str:
     """
@@ -92,13 +99,16 @@ def get_coinstats_btc_dominance() -> str:
         return "Bitcoin Dominance: " + data_unavailable_prompt
     return f"## Bitcoin Dominance:\n24h: {btc_dominance['24h']}%, 1week: {btc_dominance['1w']}%"
 
+
 def get_taapi_single_indicator(
     symbol: Annotated[str, "ticker symbol of the asset"],
     indicator: Annotated[
         str,
         "Technical analysis indicator to fetch, e.g., 'sma', 'ema', 'rsi', 'macd', etc.",
     ],
-    interval: Annotated[str, "time interval for the data, e.g., '1m', '5m', '1h'"] = "15m",
+    interval: Annotated[
+        str, "time interval for the data, e.g., '1m', '5m', '1h'"
+    ] = "15m",
 ) -> str:
     """
     Fetch technical analysis indicators for a given symbol and interval.
@@ -113,31 +123,53 @@ def get_taapi_single_indicator(
     """
     ta_data = fetch_ta_from_taapi(symbol, indicator, interval)
     if not ta_data:
-        return f"{symbol} Technical Analysis ({indicator}) at {interval}: " + data_unavailable_prompt
+        return (
+            f"{symbol} Technical Analysis ({indicator}) at {interval}: "
+            + data_unavailable_prompt
+        )
     return f"## {symbol} Technical Analysis ({indicator}) at {interval}: {ta_data}\n"
+
 
 def get_taapi_bulk_indicators(
     symbol: Annotated[str, "ticker symbol of the asset"],
-    interval: Annotated[str, "time interval for the data, e.g., '1m', '5m', '1h'"] = "15m",
-    **kwargs: dict
+    interval: Annotated[
+        str, "time interval for the data, e.g., '1m', '5m', '1h'"
+    ] = "15m",
+    **kwargs: dict,
 ) -> str:
     """
     Fetch bulk technical analysis indicators for a given symbol and interval.
 
     Args:
-        symbol (str): The trading pair symbol (e.g., 'BTC/USDT').
+        symbol (str): The trading pair symbol (e.g., 'BTC/USDT' or 'BTC').
         interval (str): The time interval for the data (e.g., '1m', '5m', '1h').
         **kwargs: Additional parameters for the indicators.
     Returns:
         str: A formatted string containing the latest technical analysis indicators.
     """
+    # Normalize symbol to TAAPI format (e.g., 'BTC/USDT')
+    symbol = symbol.upper().strip()
+    # If symbol already has a slash (from previous processing), don't double-add it
+    if "/" not in symbol:
+        if not symbol.endswith("USDT") and not symbol.endswith("USDC"):
+            symbol += "/USDT"
+        else:
+            # Symbol ends with USDT/USDC but no slash - convert to slash format
+            if symbol.endswith("USDT"):
+                symbol = symbol[:-4] + "/USDT"
+            elif symbol.endswith("USDC"):
+                symbol = symbol[:-4] + "/USDC"
+
     bulk = TAAPIBulkUtils(symbol, bulk_interval=interval, **kwargs)
     trend_momentum = bulk.fetch_trend_momentum_indicators_from_taapi()
     volatility_structure = bulk.fetch_volatility_structure_indicators_from_taapi()
     if not trend_momentum or not volatility_structure:
         return f"{symbol} Technical Analysis at {interval}: " + data_unavailable_prompt
-    return f"## {symbol} Trend and Momentum Indicators at {interval}:\n{trend_momentum}\n\n" + \
-            f"## {symbol} Volatility and Pattern Indicators at {interval}:\n{volatility_structure}\n"
+    return (
+        f"## {symbol} Trend and Momentum Indicators at {interval}:\n{trend_momentum}\n\n"
+        + f"## {symbol} Volatility and Pattern Indicators at {interval}:\n{volatility_structure}\n"
+    )
+
 
 def get_coinstats_news() -> str:
     """
@@ -153,6 +185,7 @@ def get_coinstats_news() -> str:
     for article in news:
         news_str += f"### {article['title']} (source: {article['source']})\n{article['description']}\n\n"
     return f"## CoinStats News:\n{news_str}"
+
 
 def get_google_news(
     query: Annotated[str, "Query to search with"],
@@ -179,10 +212,16 @@ def get_google_news(
 
     return f"## {query} Google News, from {before} to {curr_date}:\n\n{news_str}"
 
+
 def get_reddit_posts(
     symbol: Annotated[str, "ticker symbol of the asset"],
-    subreddit_name: Annotated[str, "name of the subreddit to fetch posts from, e.g., 'CryptoCurrency', 'CryptoMarkets', 'all'"],
-    sort: Annotated[str, "sorting method for posts ('hot', 'new', 'top', etc.)", "default is 'hot'"] = "hot",
+    subreddit_name: Annotated[
+        str,
+        "name of the subreddit to fetch posts from, e.g., 'CryptoCurrency', 'CryptoMarkets', 'all'",
+    ],
+    sort: Annotated[
+        str, "sorting method for posts ('hot', 'new', 'top', etc.)", "default is 'hot'"
+    ] = "hot",
     limit: Annotated[int, "maximum number of posts to fetch, default is 25"] = 25,
 ) -> str:
     """
@@ -206,6 +245,7 @@ def get_reddit_posts(
         posts_str += f"### {post['title']} (score: {post['score']}, created at: {datetime.utcfromtimestamp(post['created_utc']).strftime('%Y-%m-%d %H:%M:%S')})\n{post['content']}\n\n"
 
     return f"## Reddit Posts in r/{subreddit_name} for {symbol}:\n{posts_str}"
+
 
 def get_binance_ohlcv(
     symbol: Annotated[str, "ticker symbol of the asset"],
@@ -231,14 +271,24 @@ def get_binance_ohlcv(
             f"Open: {ohlcv['open']}, High: {ohlcv['high']}, Low: {ohlcv['low']}, Close: {ohlcv['close']}, Volume: {ohlcv['volume']}\n"
         )
     else:
-        return f"{symbol} Futures **Latest OHLCV Data** in last {interval}: " + data_unavailable_prompt
+        return (
+            f"{symbol} Futures **Latest OHLCV Data** in last {interval}: "
+            + data_unavailable_prompt
+        )
+
 
 def get_binance_data(
     symbol: Annotated[str, "ticker symbol of the asset"],
     interval: Annotated[str, "time interval for the data, e.g., '1m', '5m', '1h'"],
-    klines_limit: Annotated[int, "maximum number of klines to fetch, default is 75"] = 75,
-    depth_limit: Annotated[int, "maximum number of bids and asks to fetch, default is 50"] = 50,
-    longshort_limit: Annotated[int, "maximum number of long/short ratios to fetch, default is 50"] = 50,
+    klines_limit: Annotated[
+        int, "maximum number of klines to fetch, default is 75"
+    ] = 75,
+    depth_limit: Annotated[
+        int, "maximum number of bids and asks to fetch, default is 50"
+    ] = 50,
+    longshort_limit: Annotated[
+        int, "maximum number of long/short ratios to fetch, default is 50"
+    ] = 50,
 ) -> str:
     """
     Fetch historical futures data from Binance for a given symbol and interval.
@@ -249,7 +299,7 @@ def get_binance_data(
         klines_limit (int): The maximum number of klines to fetch (default is 75).
         depth_limit (int): The maximum number of bids and asks to fetch (default is 50).
         longshort_limit (int): The maximum number of long/short ratios to fetch (default is 50).
-        
+
     Returns:
         str: A formatted string containing the historical futures data.
     """
@@ -260,67 +310,136 @@ def get_binance_data(
     klines_str = ""
     klines = fetch_klines_from_binance(symbol, interval, klines_limit)
     if klines is not None and len(klines) != 0:
-        klines = list(map(lambda x: { "t": x[0], "o": x[1], "h": x[2], "l": x[3], "c": x[4], "v": x[5] }, klines))
-        klines_str = f"## {symbol} Futures **KLines Data** for {interval} interval:\n" + "\n".join(
-            [f"{ts_to_time(int(entry["t"]) / 1000)}: Open: {entry["o"]}, High: {entry["h"]}, Low: {entry["l"]}, Close: {entry["c"]}, Volume: {entry["v"]}" for entry in klines]
-        ) + "\n\n"
-    
+        klines = list(
+            map(
+                lambda x: {
+                    "t": x[0],
+                    "o": x[1],
+                    "h": x[2],
+                    "l": x[3],
+                    "c": x[4],
+                    "v": x[5],
+                },
+                klines,
+            )
+        )
+        klines_str = (
+            f"## {symbol} Futures **KLines Data** for {interval} interval:\n"
+            + "\n".join(
+                [
+                    f"{ts_to_time(int(entry['t']) / 1000)}: Open: {entry['o']}, High: {entry['h']}, Low: {entry['l']}, Close: {entry['c']}, Volume: {entry['v']}"
+                    for entry in klines
+                ]
+            )
+            + "\n\n"
+        )
+
     depth_str = ""
     depth = fetch_depth_from_binance(symbol, depth_limit)
     if depth is not None and isinstance(depth, dict):
         bids = depth.get("bids", [-1, -1])
         asks = depth.get("asks", [-1, -1])
-        depth = { "bids": { "price": bids[0], "volume": bids[1] }, "asks": { "price": asks[0], "volume": asks[1] } }
-        depth_str = f"## {symbol} Futures **Current Depth Data**:\nBids: Price: {depth["bids"]["price"]}, Volume: {depth["bids"]["volume"]}\nAsks: Price: {depth["asks"]["price"]}, Volume: {depth["asks"]["volume"]}\n\n"
+        depth = {
+            "bids": {"price": bids[0], "volume": bids[1]},
+            "asks": {"price": asks[0], "volume": asks[1]},
+        }
+        depth_str = f"## {symbol} Futures **Current Depth Data**:\nBids: Price: {depth['bids']['price']}, Volume: {depth['bids']['volume']}\nAsks: Price: {depth['asks']['price']}, Volume: {depth['asks']['volume']}\n\n"
 
     ticker_24hr_str = ""
     ticker_24hr = fetch_24hr_pricechange_from_binance(symbol)
     if ticker_24hr is not None and isinstance(ticker_24hr, dict):
-        ticker_24hr_str = f"## {symbol} Futures **24-Hour Price Change**:\nPrice Change: {ticker_24hr.get("priceChange", "N/A")}, Price Change Percent: {ticker_24hr.get("priceChangePercent", "N/A")}, Weighted Avg Price: {ticker_24hr.get("weightedAvgPrice", "N/A")}\n\n"
+        ticker_24hr_str = f"## {symbol} Futures **24-Hour Price Change**:\nPrice Change: {ticker_24hr.get('priceChange', 'N/A')}, Price Change Percent: {ticker_24hr.get('priceChangePercent', 'N/A')}, Weighted Avg Price: {ticker_24hr.get('weightedAvgPrice', 'N/A')}\n\n"
 
     top_longshort_position_ratio_str = ""
-    top_longshort_position_ratio = fetch_toplongshort_position_ratio_from_binance(symbol, interval, longshort_limit)
-    if top_longshort_position_ratio is not None and isinstance(top_longshort_position_ratio, list):
+    top_longshort_position_ratio = fetch_toplongshort_position_ratio_from_binance(
+        symbol, interval, longshort_limit
+    )
+    if top_longshort_position_ratio is not None and isinstance(
+        top_longshort_position_ratio, list
+    ):
         top_longshort_position_ratio = [
-            { "t": entry["timestamp"], "longShortRatio": entry["longShortRatio"] }
+            {"t": entry["timestamp"], "longShortRatio": entry["longShortRatio"]}
             for entry in top_longshort_position_ratio
         ]
-        top_longshort_position_ratio_str = f"## {symbol} Futures **Top Long/Short Position Ratio**:\n" + "\n".join(
-            [f"{ts_to_time(int(entry["t"]) / 1000)}: Long/Short Ratio: {entry["longShortRatio"]}" for entry in top_longshort_position_ratio]
-        ) + "\n\n"
+        top_longshort_position_ratio_str = (
+            f"## {symbol} Futures **Top Long/Short Position Ratio**:\n"
+            + "\n".join(
+                [
+                    f"{ts_to_time(int(entry['t']) / 1000)}: Long/Short Ratio: {entry['longShortRatio']}"
+                    for entry in top_longshort_position_ratio
+                ]
+            )
+            + "\n\n"
+        )
 
     top_longshort_account_ratio_str = ""
-    top_longshort_account_ratio = fetch_toplongshort_account_ratio_from_binance(symbol, interval, longshort_limit)
-    if top_longshort_account_ratio is not None and isinstance(top_longshort_account_ratio, list):
+    top_longshort_account_ratio = fetch_toplongshort_account_ratio_from_binance(
+        symbol, interval, longshort_limit
+    )
+    if top_longshort_account_ratio is not None and isinstance(
+        top_longshort_account_ratio, list
+    ):
         top_longshort_account_ratio = [
-            { "t": entry["timestamp"], "longShortRatio": entry["longShortRatio"] }
+            {"t": entry["timestamp"], "longShortRatio": entry["longShortRatio"]}
             for entry in top_longshort_account_ratio
         ]
-        top_longshort_account_ratio_str = f"## {symbol} Futures **Top Long/Short Account Ratio**:\n" + "\n".join(
-            [f"{ts_to_time(int(entry["t"]) / 1000)}: Long/Short Ratio: {entry["longShortRatio"]}" for entry in top_longshort_account_ratio]
-        ) + "\n\n"
+        top_longshort_account_ratio_str = (
+            f"## {symbol} Futures **Top Long/Short Account Ratio**:\n"
+            + "\n".join(
+                [
+                    f"{ts_to_time(int(entry['t']) / 1000)}: Long/Short Ratio: {entry['longShortRatio']}"
+                    for entry in top_longshort_account_ratio
+                ]
+            )
+            + "\n\n"
+        )
 
     global_longshort_account_ratio_str = ""
-    global_longshort_account_ratio = fetch_global_longshort_account_ratio_from_binance(symbol, interval, longshort_limit)
-    if global_longshort_account_ratio is not None and isinstance(global_longshort_account_ratio, list):
+    global_longshort_account_ratio = fetch_global_longshort_account_ratio_from_binance(
+        symbol, interval, longshort_limit
+    )
+    if global_longshort_account_ratio is not None and isinstance(
+        global_longshort_account_ratio, list
+    ):
         global_longshort_account_ratio = [
-            { "t": entry["timestamp"], "longShortRatio": entry["longShortRatio"] }
+            {"t": entry["timestamp"], "longShortRatio": entry["longShortRatio"]}
             for entry in global_longshort_account_ratio
         ]
-        global_longshort_account_ratio_str = f"## {symbol} Futures **Global Long/Short Account Ratio**:\n" + "\n".join(
-            [f"{ts_to_time(int(entry["t"]) / 1000)}: Long/Short Ratio: {entry["longShortRatio"]}" for entry in global_longshort_account_ratio]
-        ) + "\n\n"
+        global_longshort_account_ratio_str = (
+            f"## {symbol} Futures **Global Long/Short Account Ratio**:\n"
+            + "\n".join(
+                [
+                    f"{ts_to_time(int(entry['t']) / 1000)}: Long/Short Ratio: {entry['longShortRatio']}"
+                    for entry in global_longshort_account_ratio
+                ]
+            )
+            + "\n\n"
+        )
 
     taker_longshort_ratio_str = ""
-    taker_longshort_ratio = fetch_taker_longshort_ratio_from_binance(symbol, interval, longshort_limit)
+    taker_longshort_ratio = fetch_taker_longshort_ratio_from_binance(
+        symbol, interval, longshort_limit
+    )
     if taker_longshort_ratio is not None and isinstance(taker_longshort_ratio, list):
         taker_longshort_ratio = [
-            { "t": entry["timestamp"], "buySellRatio": entry["buySellRatio"], "buyVol": entry["buyVol"], "sellVol": entry["sellVol"] }
+            {
+                "t": entry["timestamp"],
+                "buySellRatio": entry["buySellRatio"],
+                "buyVol": entry["buyVol"],
+                "sellVol": entry["sellVol"],
+            }
             for entry in taker_longshort_ratio
         ]
-        taker_longshort_ratio_str = f"## {symbol} Futures **Taker Long/Short Ratio**:\n" + "\n".join(
-            [f"{ts_to_time(int(entry["t"]) / 1000)}: Long/Short Ratio: {entry["buySellRatio"]}, Buy Volume: {entry["buyVol"]}, Sell Volume: {entry["sellVol"]}" for entry in taker_longshort_ratio]
-        ) + "\n\n"
+        taker_longshort_ratio_str = (
+            f"## {symbol} Futures **Taker Long/Short Ratio**:\n"
+            + "\n".join(
+                [
+                    f"{ts_to_time(int(entry['t']) / 1000)}: Long/Short Ratio: {entry['buySellRatio']}, Buy Volume: {entry['buyVol']}, Sell Volume: {entry['sellVol']}"
+                    for entry in taker_longshort_ratio
+                ]
+            )
+            + "\n\n"
+        )
 
     return (
         f"## {symbol} Futures Data:\n\n"
@@ -333,34 +452,36 @@ def get_binance_data(
         + taker_longshort_ratio_str
     )
 
+
 def get_asset_news_llm(ticker, curr_date):
     config = get_config()
     client = OpenAI(
         base_url=config.get("search_backend_url", config["backend_url"]),
-        api_key=os.getenv(config["api_key_env_name"])
+        api_key=os.getenv(config["api_key_env_name"]),
     )
-    
+
     response = client.chat.completions.create(
         model=config["search_llm"],
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
             {
                 "role": "user",
-                "content": get_prompts("tools", "get_asset_news_llm") \
-                    .replace("{ticker}", ticker) \
-                    .replace("{curr_date}", curr_date)
-            }
+                "content": get_prompts("tools", "get_asset_news_llm")
+                .replace("{ticker}", ticker)
+                .replace("{curr_date}", curr_date),
+            },
         ],
-        extra_body={"enable_search": True}
+        extra_body={"enable_search": True},
     )
     print(response)
     return response.choices[0].message.content
+
 
 def get_global_news_llm(curr_date):
     config = get_config()
     client = OpenAI(
         base_url=config.get("search_backend_url", config["backend_url"]),
-        api_key=os.getenv(config["api_key_env_name"])
+        api_key=os.getenv(config["api_key_env_name"]),
     )
 
     response = client.chat.completions.create(
@@ -369,20 +490,22 @@ def get_global_news_llm(curr_date):
             {"role": "system", "content": "You are a helpful assistant."},
             {
                 "role": "user",
-                "content": get_prompts("tools", "get_global_news_llm") \
-                    .replace("{curr_date}", curr_date),
-            }
+                "content": get_prompts("tools", "get_global_news_llm").replace(
+                    "{curr_date}", curr_date
+                ),
+            },
         ],
-        extra_body={"enable_search": True}
+        extra_body={"enable_search": True},
     )
 
     return response.choices[0].message.content
+
 
 def get_fundamentals_llm(ticker, curr_date):
     config = get_config()
     client = OpenAI(
         base_url=config.get("search_backend_url", config["backend_url"]),
-        api_key=os.getenv(config["api_key_env_name"])
+        api_key=os.getenv(config["api_key_env_name"]),
     )
 
     response = client.chat.completions.create(
@@ -391,17 +514,18 @@ def get_fundamentals_llm(ticker, curr_date):
             {"role": "system", "content": "You are a helpful assistant."},
             {
                 "role": "user",
-                "content": get_prompts("tools", "get_fundamentals_llm") \
-                    .replace("{ticker}", ticker) \
-                    .replace("{curr_date}", curr_date),
-            }
+                "content": get_prompts("tools", "get_fundamentals_llm")
+                .replace("{ticker}", ticker)
+                .replace("{curr_date}", curr_date),
+            },
         ],
-        extra_body={"enable_search": True}
+        extra_body={"enable_search": True},
     )
 
     return response.choices[0].message.content
 
-#region Deprecated Stock Utilities
+
+# region Deprecated Stock Utilities
 @deprecated("Utilities only for stocks are deprecated.")
 def get_finnhub_news(
     ticker: Annotated[
@@ -444,6 +568,7 @@ def get_finnhub_news(
 
     return f"## {ticker} News, from {before} to {curr_date}:\n" + str(combined_result)
 
+
 @deprecated("Utilities only for stocks are deprecated.")
 def get_finnhub_asset_insider_sentiment(
     ticker: Annotated[str, "ticker symbol for the asset"],
@@ -484,6 +609,7 @@ def get_finnhub_asset_insider_sentiment(
         + result_str
         + "The change field refers to the net buying/selling from all insiders' transactions. The mspr field refers to monthly share purchase ratio."
     )
+
 
 @deprecated("Utilities only for stocks are deprecated.")
 def get_finnhub_asset_insider_transactions(
@@ -526,6 +652,7 @@ def get_finnhub_asset_insider_transactions(
         + result_str
         + "The change field reflects the variation in share count—here a negative number indicates a reduction in holdings—while share specifies the total number of shares involved. The transactionPrice denotes the per-share price at which the trade was executed, and transactionDate marks when the transaction occurred. The name field identifies the insider making the trade, and transactionCode (e.g., S for sale) clarifies the nature of the transaction. FilingDate records when the transaction was officially reported, and the unique id links to the specific SEC filing, as indicated by the source. Additionally, the symbol ties the transaction to a particular asset, isDerivative flags whether the trade involves derivative securities, and currency notes the currency context of the transaction."
     )
+
 
 @deprecated("Utilities only for stocks are deprecated.")
 def get_simfin_balance_sheet(
@@ -574,6 +701,7 @@ def get_simfin_balance_sheet(
         + "\n\nThis includes metadata like reporting dates and currency, share details, and a breakdown of assets, liabilities, and equity. Assets are grouped as current (liquid items like cash and receivables) and noncurrent (long-term investments and property). Liabilities are split between short-term obligations and long-term debts, while equity reflects shareholder funds such as paid-in capital and retained earnings. Together, these components ensure that total assets equal the sum of liabilities and equity."
     )
 
+
 @deprecated("Utilities only for stocks are deprecated.")
 def get_simfin_cashflow(
     ticker: Annotated[str, "ticker symbol"],
@@ -620,6 +748,7 @@ def get_simfin_cashflow(
         + str(latest_cash_flow)
         + "\n\nThis includes metadata like reporting dates and currency, share details, and a breakdown of cash movements. Operating activities show cash generated from core business operations, including net income adjustments for non-cash items and working capital changes. Investing activities cover asset acquisitions/disposals and investments. Financing activities include debt transactions, equity issuances/repurchases, and dividend payments. The net change in cash represents the overall increase or decrease in the asset's cash position during the reporting period."
     )
+
 
 @deprecated("Utilities only for stocks are deprecated.")
 def get_simfin_income_statements(
@@ -668,6 +797,7 @@ def get_simfin_income_statements(
         + "\n\nThis includes metadata like reporting dates and currency, share details, and a comprehensive breakdown of the asset's financial performance. Starting with Revenue, it shows Cost of Revenue and resulting Gross Profit. Operating Expenses are detailed, including SG&A, R&D, and Depreciation. The statement then shows Operating Income, followed by non-operating items and Interest Expense, leading to Pretax Income. After accounting for Income Tax and any Extraordinary items, it concludes with Net Income, representing the asset's bottom-line profit or loss for the period."
     )
 
+
 @deprecated("Utilities only for stocks are deprecated.")
 def get_stock_stats_indicators_window(
     symbol: Annotated[str, "ticker symbol of the asset"],
@@ -678,7 +808,6 @@ def get_stock_stats_indicators_window(
     look_back_days: Annotated[int, "how many days to look back"],
     online: Annotated[bool, "to fetch data online or offline"],
 ) -> str:
-
     best_ind_params = {
         # Moving Averages
         "close_50_sma": (
@@ -804,6 +933,7 @@ def get_stock_stats_indicators_window(
 
     return result_str
 
+
 @deprecated("Utilities only for stocks are deprecated.")
 def get_stockstats_indicator(
     symbol: Annotated[str, "ticker symbol of the asset"],
@@ -813,7 +943,6 @@ def get_stockstats_indicator(
     ],
     online: Annotated[bool, "to fetch data online or offline"],
 ) -> str:
-
     curr_date = datetime.strptime(curr_date, "%Y-%m-%d")
     curr_date = curr_date.strftime("%Y-%m-%d")
 
@@ -832,6 +961,7 @@ def get_stockstats_indicator(
         return ""
 
     return str(indicator_value)
+
 
 @deprecated("Utilities only for stocks are deprecated.")
 def get_YFin_data_window(
@@ -874,13 +1004,13 @@ def get_YFin_data_window(
         + df_string
     )
 
+
 @deprecated("Utilities only for stocks are deprecated.")
 def get_YFin_data_online(
     symbol: Annotated[str, "ticker symbol of the asset"],
     start_date: Annotated[str, "Start date in yyyy-mm-dd format"],
     end_date: Annotated[str, "Start date in yyyy-mm-dd format"],
 ):
-
     datetime.strptime(start_date, "%Y-%m-%d")
     datetime.strptime(end_date, "%Y-%m-%d")
 
@@ -916,6 +1046,7 @@ def get_YFin_data_online(
 
     return header + csv_string
 
+
 @deprecated("Utilities only for stocks are deprecated.")
 def get_YFin_data(
     symbol: Annotated[str, "ticker symbol of the asset"],
@@ -950,4 +1081,6 @@ def get_YFin_data(
     filtered_data = filtered_data.reset_index(drop=True)
 
     return filtered_data
-#endregion
+
+
+# endregion

@@ -1,14 +1,14 @@
-
 import os
 from datetime import datetime, timedelta
 import requests
 from .utils import Singleton
 
+
 def fetch_ta_from_taapi(symbol: str, indicator: str, interval: str = "15m", **params):
     """
     Fetch technical analysis data from TAAPI.io for a given symbol and indicator.
     :note: For free plan, the rate limit is 1 request per 15 seconds.
-    
+
     :param symbol: The trading pair symbol (e.g., 'BTC/USDT').
     :param indicator: The technical indicator to fetch (e.g., 'rsi', 'macd').
     :param interval: The time interval for the data (default is '15m').
@@ -22,11 +22,12 @@ def fetch_ta_from_taapi(symbol: str, indicator: str, interval: str = "15m", **pa
         "exchange": "binance",
         "symbol": symbol,
         "interval": interval,
-        **params
+        **params,
     }
     url = f"https://api.taapi.io/{indicator}"
     response = requests.get(url, params=params)
     return response.text if response.status_code == 200 else None
+
 
 class TAAPIBulkUtils(metaclass=Singleton):
     """
@@ -35,12 +36,28 @@ class TAAPIBulkUtils(metaclass=Singleton):
     """
 
     trend_momentum_indicators = [
-        "ema", "ichimoku", "supertrend", "donchianchannels",
-        "macd", "rsi", "stochrsi", "trix", "stc", "vwap"
+        "ema",
+        "ichimoku",
+        "supertrend",
+        "donchianchannels",
+        "macd",
+        "rsi",
+        "stochrsi",
+        "trix",
+        "stc",
+        "vwap",
     ]
     volatility_structure_indicators = [
-        "atr", "bbands", "keltnerchannels", "chop", "engulfing",
-        "hammer", "morningstar", "eveningstar", "3whitesoldiers", "3blackcrows"
+        "atr",
+        "bbands",
+        "keltnerchannels",
+        "chop",
+        "engulfing",
+        "hammer",
+        "morningstar",
+        "eveningstar",
+        "3whitesoldiers",
+        "3blackcrows",
     ]
     indicators = trend_momentum_indicators + volatility_structure_indicators
 
@@ -57,22 +74,39 @@ class TAAPIBulkUtils(metaclass=Singleton):
         self.last_fetch_time = None
 
         symbol = symbol.upper()
+        # Prevent double-adding /USDT suffix (e.g., 'ETHUSDT' -> 'ETH/USDT' not 'ETHUSDT/USDT')
         if not symbol.endswith("/USDT") and not symbol.endswith("/USDC"):
-            symbol += "/USDT"
+            # If symbol ends with USDT/USDC without slash, convert it to slash format
+            if symbol.endswith("USDT"):
+                symbol = symbol[:-4] + "/USDT"
+            elif symbol.endswith("USDC"):
+                symbol = symbol[:-4] + "/USDC"
+            else:
+                symbol += "/USDT"
         self.symbol = symbol
         self.bulk_interval = bulk_interval
         self.indicator_params = [
             {
                 "indicator": indicator,
-                **({k.replace(f"{indicator}_", ""): v for k, v in kwargs.items() if k.startswith(f"{indicator}_")})
-            } for indicator in self.indicators
+                **(
+                    {
+                        k.replace(f"{indicator}_", ""): v
+                        for k, v in kwargs.items()
+                        if k.startswith(f"{indicator}_")
+                    }
+                ),
+            }
+            for indicator in self.indicators
         ]
-        
+
     def __fetch_bulk_ta_from_taapi(self):
-        if self.bulk_data is not None and self.last_fetch_time is not None and \
-            datetime.now() - self.last_fetch_time < timedelta(seconds=15):
+        if (
+            self.bulk_data is not None
+            and self.last_fetch_time is not None
+            and datetime.now() - self.last_fetch_time < timedelta(seconds=15)
+        ):
             return self.bulk_data
-        
+
         if not self.api_key:
             return None
 
@@ -83,15 +117,18 @@ class TAAPIBulkUtils(metaclass=Singleton):
                 "exchange": "binance",
                 "symbol": self.symbol,
                 "interval": self.bulk_interval,
-                "indicators": self.indicator_params
-            }
+                "indicators": self.indicator_params,
+            },
         }
         self.last_fetch_time = datetime.now()
         response = requests.post(url, json=body)
         if response.status_code == 200:
             data = response.json()
             if "data" in data and isinstance(data["data"], list):
-                format_floats_in_dict = lambda d: {k: (round(v, 4) if isinstance(v, float) else v) for k, v in d.items()}
+                format_floats_in_dict = lambda d: {
+                    k: (round(v, 4) if isinstance(v, float) else v)
+                    for k, v in d.items()
+                }
                 self.bulk_data = {
                     item["indicator"]: format_floats_in_dict(item["result"])
                     for item in data["data"]
@@ -108,8 +145,11 @@ class TAAPIBulkUtils(metaclass=Singleton):
         self.__fetch_bulk_ta_from_taapi()
         if self.bulk_data is None or not isinstance(self.bulk_data, dict):
             return None
-        return {indicator: self.bulk_data.get(indicator, {}) for indicator in self.trend_momentum_indicators}
-    
+        return {
+            indicator: self.bulk_data.get(indicator, {})
+            for indicator in self.trend_momentum_indicators
+        }
+
     def fetch_volatility_structure_indicators_from_taapi(self):
         """
         Fetch volatility and structure indicators from TAAPI.io.
@@ -118,4 +158,7 @@ class TAAPIBulkUtils(metaclass=Singleton):
         self.__fetch_bulk_ta_from_taapi()
         if self.bulk_data is None or not isinstance(self.bulk_data, dict):
             return None
-        return {indicator: self.bulk_data.get(indicator, {}) for indicator in self.volatility_structure_indicators}
+        return {
+            indicator: self.bulk_data.get(indicator, {})
+            for indicator in self.volatility_structure_indicators
+        }
