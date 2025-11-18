@@ -13,3 +13,8 @@ eval_data/
 */reports/*
 tests/
 logs/
+
+*/agents/*
+.opencode
+.bmad
+docs/sprint-artefacts

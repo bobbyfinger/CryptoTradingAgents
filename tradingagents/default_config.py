@@ -5,7 +5,7 @@ DEFAULT_CONFIG = {
     "data_dir": "/Users/yluo/Documents/Code/ScAI/FR1-data",
     # Output settings
     "save_report": True,
-    "report_type": "pdf",  # either 'pdf' or 'md'
+    "report_type": "md",  # either 'pdf' or 'md'
     "report_dir": os.path.join(
         os.path.abspath(os.path.join(os.path.dirname(__file__), ".")), "reports"
     ),

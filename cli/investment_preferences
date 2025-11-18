@@ -1,7 +1,17 @@
 # You can also tell the models about your current holdings.
-# - 当前持仓：BTC，开多，10% 仓位，25x 杠杆，开仓价 50000
-- 交易资产：期货，可多空
-- 投资风格：激进
-- 交易周期：短期，1 天到 3 天
-- 杠杆：最小 25x，最大 100x
-- 最大能接受的损失：50%
+# BTC
+#- capital : 2000 USD
+#- traded asset: spot
+#- investment style: aggressive
+#- trading cycle : 5 jours
+#- leverage: na
+#- maximum acceptable loss: 20%
+
+#SOL
+- capital : 30 SOL (entry price : 200USD/SOL)
+- traded asset: spot
+- investment style: aggressive
+- trading cycle : 5 jours
+- leverage: na
+- maximum acceptable loss: nothing
+- strategy : buy red and sell green
